@@ -49,7 +49,7 @@ let
       );
 
       # Shell with the appropriate JupyterLab, launching it at startup.
-      env = pkgs.mkShell {
+      env = pkgs.makeOverridable pkgs.mkShell {
         name = "jupyterlab-shell";
         inputsFrom = extraInputsFrom pkgs;
         buildInputs =
