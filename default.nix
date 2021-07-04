@@ -39,21 +39,24 @@ let
 
       # JupyterLab executable wrapped with suitable environment variables.
       jupyterlab = python3.toPythonModule (
-        python3.jupyterlab.overridePythonAttrs (oldAttrs: {
-          makeWrapperArgs = [
-            "--set JUPYTERLAB_DIR ${directory}"
-            "--set JUPYTER_PATH ${extraJupyterPath pkgs}:${kernelsString kernels}"
-            "--set PYTHONPATH ${extraJupyterPath pkgs}:${pythonPath}"
-          ];
-        })
+        python3.jupyterlab.overridePythonAttrs (oldAttrs: { inherit makeWrapperArgs; })
       );
+
+      jupyter_core = python3.jupyter_core.overridePythonAttrs (oldAttrs: { inherit makeWrapperArgs; });
+      jupyter_client = python3.jupyter_client.overridePythonAttrs (oldAttrs: { inherit makeWrapperArgs; });
+
+      makeWrapperArgs = [
+        "--set JUPYTERLAB_DIR ${directory}"
+        "--set JUPYTER_PATH ${extraJupyterPath pkgs}:${kernelsString kernels}"
+        "--set PYTHONPATH ${extraJupyterPath pkgs}:${pythonPath}"
+      ];
 
       # Shell with the appropriate JupyterLab, launching it at startup.
       env = pkgs.mkShell {
         name = "jupyterlab-shell";
         inputsFrom = extraInputsFrom pkgs;
         buildInputs =
-          [ jupyterlab generateDirectory generateLockFile pkgs.nodejs ] ++
+          [ jupyterlab jupyter_core jupyter_client generateDirectory generateLockFile pkgs.nodejs ] ++
           (map (k: k.runtimePackages) kernels) ++
           (extraPackages pkgs);
         shellHook = ''
@@ -62,9 +65,12 @@ let
         '';
       };
     in
-      jupyterlab.override (oldAttrs: {
-        passthru = oldAttrs.passthru or {} // { inherit env; };
-      });
+    (pkgs.buildEnv {
+      name = "jupyter-env";
+      paths = [ jupyterlab jupyter_core jupyter_client ];
+    }).override (oldAttrs: {
+      passthru = oldAttrs.passthru or { } // { inherit env; };
+    });
 in
   { inherit
       jupyterlabWith
